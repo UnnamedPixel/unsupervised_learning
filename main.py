@@ -49,24 +49,32 @@ def display_dataset_w_label(datanp, label, clustering_method=""):
 # SCORE
 
 
-def get_silhouette_scr(data, true_label):
+def get_silhouette_scr(data, predicted_label):
     silhouette_scr = metrics.silhouette_score(data, predicted_label)
     return silhouette_scr
 
 
-def get_davies_bouldin_scr(data, true_label):
+def get_davies_bouldin_scr(data, predicted_label):
     davies_bouldin_scr = metrics.davies_bouldin_score(data, predicted_label)
     return davies_bouldin_scr
 
 
-def get_calinski_harabasz_scr(data, true_label):
-    calinski_harabasz_scr = metrics.calinski_harabasz_score(
-        data, predicted_label)
+def get_calinski_harabasz_scr(data, predicted_label):
+    calinski_harabasz_scr = metrics.calinski_harabasz_score(data, predicted_label)
     return calinski_harabasz_scr
 
 
+def get_metric_score(datapoints, label, metric):
+    if metric == "silhouette":
+        return get_silhouette_scr(datapoints, label)
+    elif metric == "davies_bouldin":
+        return get_davies_bouldin_scr(datapoints, label)
+    elif metric == "calinski_harabasz":
+        return get_calinski_harabasz_scr(datapoints, label)
+    else:
+        raise ValueError(f"Métrique inconnue : {metric}")
+        
 def display_dendogramme(data):
-    print(" Dendrogramme 'single 'donnees initiales ")
     linked_mat = shc.linkage(data, 'single')
     plt.figure(figsize=(12, 12))
     shc.dendrogram(linked_mat,
@@ -79,12 +87,10 @@ def display_dendogramme(data):
 
 
 def Kmeans(datanp, nb_cluster):
-
     tps_start = time.time()
 
     # create model
-    print(nb_cluster)
-    model = cluster.KMeans(n_clusters=nb_cluster, init='k-means++')
+    model = cluster.KMeans(n_clusters=nb_cluster, init='k-means++',n_init='auto')
 
     # train model using data
     model.fit(datanp)
@@ -229,13 +235,12 @@ def DBSCAN(datanp, min_samples, eps):
 
     return predicted_labels, nb_cluster_estimated, n_noise_, runtime
 
-def NearestNeighboors(X):
+def compute_NearestNeighboors(datanp,n_neighbors):
     # Distances k plus proches voisins
     # Donnees dans X
-    k = 5
-    neigh = NearestNeighbors(n_neighbors=k)
-    neigh.fit(X)
-    distances, indices = neigh.kneighbors(X)
+    neigh = NearestNeighbors(n_neighbors=n_neighbors)
+    neigh.fit(datanp)
+    distances, indices = neigh.kneighbors(datanp)
     # retirer le point " origine "
     newDistances = np.asarray([np.average(distances[i][1:]) for i in range(0,
                                                                            distances.shape[0])])
@@ -245,6 +250,75 @@ def NearestNeighboors(X):
     plt.show()
 
 
+
+def find_best_k(datapoints, k_values=list(range(2, 11)), metrics=["silhouette", "davies_bouldin", "calinski_harabasz"], verbose=True):
+
+    scr_silh = []
+    scr_db = []      
+    scr_ch = []
+
+    for k in k_values:
+        predicted_labels, iteration, runtime = Kmeans(datapoints, k)
+        # Calcul des scores pour chaque métrique choisie
+        if len(set(predicted_labels)) < 2:
+            print(f"Skipping k={k} as it resulted in only one cluster.")
+            for metric in metrics:
+                if metric == "silhouette":
+                    scr_silh.append(0)
+                elif metric == "davies_bouldin":
+                    scr_db.append(0)
+                    
+                elif metric == "calinski_harabasz":
+                    scr_ch.append(0)
+            continue
+        for metric in metrics:
+            if metric == "silhouette":
+                scr_silh.append(get_silhouette_scr(datapoints, predicted_labels))
+            elif metric == "davies_bouldin":
+                scr_db.append(get_davies_bouldin_scr(datapoints, predicted_labels))
+                
+            elif metric == "calinski_harabasz":
+                scr_ch.append(get_calinski_harabasz_scr(datapoints, predicted_labels))
+                
+    best_k_silhouette = k_values[np.argmax(scr_silh)]
+    best_k_davies_bouldin = k_values[np.argmin(scr_db)]
+    best_k_calinski_harabasz = k_values[np.argmax(scr_ch)]
+
+    if verbose:
+        if best_k_silhouette == best_k_davies_bouldin == best_k_calinski_harabasz:
+            print(f"Meilleur k : {best_k_silhouette} (unanimité)")
+        else:
+            if best_k_silhouette == best_k_davies_bouldin:
+                print(f"Meilleur k (Silhouette et Davies-Bouldin) : {best_k_silhouette}")
+            elif best_k_silhouette == best_k_calinski_harabasz:
+                print(f"Meilleur k (Silhouette et Calinski-Harabasz) : {best_k_silhouette}")
+            elif best_k_davies_bouldin == best_k_calinski_harabasz:
+                print(f"Meilleur k (Davies-Bouldin et Calinski-Harabasz) : {best_k_davies_bouldin}")
+            else:
+                print(f"Meilleur k (Silhouette) : {best_k_silhouette}")
+                print(f"Meilleur k (Davies-Bouldin) : {best_k_davies_bouldin}")
+                print(f"Meilleur k (Calinski-Harabasz) : {best_k_calinski_harabasz}")
+                
+    if verbose:
+        # Normaliser les scores
+        max_silh = max(scr_silh)
+        max_db = max(scr_db)
+        max_ch = max(scr_ch)
+        
+        scr_silh_normalized = [score / max_silh for score in scr_silh]
+        scr_db_normalized = [score / max_db for score in scr_db]
+        scr_ch_normalized = [score / max_ch for score in scr_ch]
+        
+        # Afficher les courbes normalisées
+        plt.plot(k_values, scr_silh_normalized, label='Silhouette')
+        plt.plot(k_values, scr_db_normalized, label='Davies-Bouldin')
+        plt.plot(k_values, scr_ch_normalized, label='Calinski-Harabasz')
+        plt.xlabel('Nombre de clusters (k)')
+        plt.ylabel('Scores normalisés')
+        plt.legend()
+        plt.show()
+    
+    
 datanp, true_label = load_dataset("2d-4c.arff")
 display_dataset(datanp)
 predicted_label, nb_cluster_estimated, n_noise_, runtime = DBSCAN(
@@ -255,8 +329,7 @@ predicted_label, nb_cluster_estimated, n_noise_, runtime = DBSCAN(
     datanp, 25, 15)
 display_dataset_w_label(datanp, predicted_label)
 
-NearestNeighboors(datanp)
-
+find_best_k(datanp)
 # %% TESTs
 
 def list_files_with_specific_extension(folder_path, specific_extension):
