@@ -7,14 +7,11 @@ from sklearn import metrics
 from sklearn.neighbors import NearestNeighbors
 import scipy.cluster.hierarchy as shc
 import os
-
-
-path = os.path.dirname(__file__).replace("\\", "/") + "/artificial/"
-
+import pandas as pd
 
 def define_path(new_path):
     global path
-    path = new_path
+    path = new_path.replace("\\", "/")
 
 
 def load_dataset(ds_name):
@@ -29,21 +26,21 @@ def load_dataset(ds_name):
     return datanp, true_label
 
 
-def display_dataset(datanp):
+def display_dataset(datanp,name=""):
     f0 = [element[0] for element in datanp]
     # tous les elements de la deuxieme colonne
     f1 = [element[1] for element in datanp]
     plt.scatter(f0, f1, s=8)
-    plt.title(" Donnees initiales ")
+    plt.title(" Initial Data " + str(name))
     plt.show()
 
 
-def display_dataset_w_label(datanp, label, clustering_method=""):
+def display_dataset_w_label(datanp, label, message=""):
     f0 = [element[0] for element in datanp]
     # tous les elements de la deuxieme colonne
     f1 = [element[1] for element in datanp]
     plt.scatter(f0, f1, c=label, s=8)
-    plt.title(f" Donnees apres clustering {clustering_method}")
+    plt.title(f" Data after clustering '{message}'")
     plt.show()
 
 # SCORE
@@ -74,17 +71,14 @@ def get_metric_score(datapoints, label, metric):
     else:
         raise ValueError(f"Métrique inconnue : {metric}")
         
-def display_dendogramme(data):
+def display_dendogramme(data, message = ""):
     linked_mat = shc.linkage(data, 'single')
-    plt.figure(figsize=(12, 12))
+    plt.title(f"Dendogramme of data {message}")
     shc.dendrogram(linked_mat,
                    orientation='top',
                    distance_sort='descending',
                    show_leaf_counts=False)
     plt.show()
-
-# %% KMEANS CLUSTERING
-
 
 def Kmeans(datanp, nb_cluster):
     tps_start = time.time()
@@ -99,79 +93,17 @@ def Kmeans(datanp, nb_cluster):
     iteration = model.n_iter_
     predicted_labels = model.labels_
     runtime = tps_end - tps_start
+    print(" nb clusters = ", 3, " , nb iter = ", iteration, " ,...",
+          "runtime = ", round(runtime * 1000, 2), " ms ,")
 
     return predicted_labels, iteration, runtime
 
-
-datanp, true_label = load_dataset("xclara.arff")
-display_dataset(datanp)
-
-for nb_cluster in range(3, 6):
-    predicted_label, iteration, runtime = Kmeans(datanp, nb_cluster)
-    get_silhouette_scr(datanp, predicted_label)
-    get_davies_bouldin_scr(datanp, predicted_label)
-    get_calinski_harabasz_scr(datanp, predicted_label)
-    display_dataset_w_label(datanp, predicted_label)
-    print(" nb clusters = ", nb_cluster, " , nb iter = ", iteration, " ,...",
-          "runtime = ", round(runtime * 1000, 2), " ms ,")
-
-
-datanp, true_label = load_dataset("banana.arff")
-display_dataset(datanp)
-
-for nb_cluster in range(4, 6):
-    predicted_label, iteration, runtime = Kmeans(datanp, nb_cluster)
-    get_silhouette_scr(datanp, predicted_label)
-    get_davies_bouldin_scr(datanp, predicted_label)
-    get_calinski_harabasz_scr(datanp, predicted_label)
-    display_dataset_w_label(datanp, predicted_label)
-    print(" nb clusters = ", nb_cluster, " , nb iter = ", iteration, " ,...",
-          "runtime = ", round(runtime * 1000, 2), " ms ,")
-
-datanp, true_label = load_dataset("2d-10c.arff")
-display_dataset(datanp)
-for nb_cluster in range(8, 10):
-    predicted_label, iteration, runtime = Kmeans(datanp, nb_cluster)
-    get_silhouette_scr(datanp, predicted_label)
-    get_davies_bouldin_scr(datanp, predicted_label)
-    get_calinski_harabasz_scr(datanp, predicted_label)
-    display_dataset_w_label(datanp, predicted_label)
-    print(" nb clusters = ", nb_cluster, " , nb iter = ", iteration, " ,...",
-          "runtime = ", round(runtime * 1000, 2), " ms ,")
-
-datanp, true_label = load_dataset("diamond9.arff")
-display_dataset(datanp)
-for nb_cluster in range(8, 10):
-    predicted_label, iteration, runtime = Kmeans(datanp, nb_cluster)
-    get_silhouette_scr(datanp, predicted_label)
-    get_davies_bouldin_scr(datanp, predicted_label)
-    get_calinski_harabasz_scr(datanp, predicted_label)
-    display_dataset_w_label(datanp, predicted_label)
-    print(" nb clusters = ", nb_cluster, " , nb iter = ", iteration, " ,...",
-          "runtime = ", round(runtime * 1000, 2), " ms ,")
-
-
-datanp, true_label = load_dataset("2d-4c.arff")
-display_dataset(datanp)
-for nb_cluster in range(3, 6):
-    predicted_label, iteration, runtime = Kmeans(datanp, nb_cluster)
-    get_silhouette_scr(datanp, predicted_label)
-    get_davies_bouldin_scr(datanp, predicted_label)
-    get_calinski_harabasz_scr(datanp, predicted_label)
-    display_dataset_w_label(datanp, predicted_label)
-    print(" nb clusters = ", nb_cluster, " , nb iter = ", iteration, " ,...",
-          "runtime = ", round(runtime * 1000, 2), " ms ,")
-
-# %% AGGLOMERATIF CLUSTERING
-
-
 def clustering_agglomeratif_w_th(databrut, linkage, threshold) -> None:
     # set distance_threshold ( 0 ensures we compute the full tree )
-
     tps1 = time.time()
     model = cluster.AgglomerativeClustering(
         distance_threshold=threshold, linkage=linkage, n_clusters=None)
-    model = model.fit(datanp)
+    model = model.fit(databrut)
     tps2 = time.time()
     predicted_labels = model.labels_
     nb_cluster_estimated = model.n_clusters_
@@ -183,12 +115,12 @@ def clustering_agglomeratif_w_th(databrut, linkage, threshold) -> None:
     return predicted_labels, nb_cluster_estimated, leaves, runtime
 
 
-def clustering_agglomeratif_w_nb_cluster(databrut, linkage, n_clusters) -> None:
+def clustering_agglomeratif_w_nb_cluster(datanp, linkage, n_clusters, metric='euclidean') -> None:
     # set distance_threshold ( 0 ensures we compute the full tree )
 
     tps1 = time.time()
     model = cluster.AgglomerativeClustering(
-        linkage=linkage, n_clusters=n_clusters)
+        linkage=linkage, n_clusters=n_clusters,  metric =  metric)
     model = model.fit(datanp)
     tps2 = time.time()
     predicted_labels = model.labels_
@@ -199,22 +131,6 @@ def clustering_agglomeratif_w_nb_cluster(databrut, linkage, n_clusters) -> None:
           " runtime = ", round((tps2 - tps1) * 1000, 2), " ms ")
     runtime = tps2 - tps1
     return predicted_labels, nb_cluster_estimated, leaves, runtime
-
-
-datanp, true_label = load_dataset("2d-4c.arff")
-display_dataset(datanp)
-display_dendogramme(datanp)
-
-predicted_label, nb_cluster_estimated, n_noise_, runtime = clustering_agglomeratif_w_th(
-    datanp, 'single', 0.5)
-display_dataset_w_label(datanp, predicted_label)
-
-predicted_label, nb_cluster_estimated, n_noise_, runtime = clustering_agglomeratif_w_nb_cluster(
-    datanp, 'single', 3)
-display_dataset_w_label(datanp, predicted_label)
-
-
-# %% DBSCAN CLUSTERING
 
 def DBSCAN(datanp, min_samples, eps):
     tps1 = time.time()
@@ -235,19 +151,6 @@ def DBSCAN(datanp, min_samples, eps):
 
     return predicted_labels, nb_cluster_estimated, n_noise_, runtime
 
-def compute_NearestNeighboors(datanp,n_neighbors):
-    # Distances k plus proches voisins
-    # Donnees dans X
-    neigh = NearestNeighbors(n_neighbors=n_neighbors)
-    neigh.fit(datanp)
-    distances, indices = neigh.kneighbors(datanp)
-    # retirer le point " origine "
-    newDistances = np.asarray([np.average(distances[i][1:]) for i in range(0,
-                                                                           distances.shape[0])])
-    trie = np.sort(newDistances)
-    plt.title(" Plus proches voisins ( 5 ) ")
-    plt.plot(trie)
-    plt.show()
 
 
 
@@ -287,14 +190,19 @@ def find_best_k(datapoints, k_values=list(range(2, 11)), metrics=["silhouette", 
     if verbose:
         if best_k_silhouette == best_k_davies_bouldin == best_k_calinski_harabasz:
             print(f"Meilleur k : {best_k_silhouette} (unanimité)")
+            k_to_return = best_k_silhouette
         else:
             if best_k_silhouette == best_k_davies_bouldin:
+                k_to_return = best_k_silhouette
                 print(f"Meilleur k (Silhouette et Davies-Bouldin) : {best_k_silhouette}")
             elif best_k_silhouette == best_k_calinski_harabasz:
+                k_to_return = best_k_silhouette
                 print(f"Meilleur k (Silhouette et Calinski-Harabasz) : {best_k_silhouette}")
             elif best_k_davies_bouldin == best_k_calinski_harabasz:
+                k_to_return = best_k_davies_bouldin
                 print(f"Meilleur k (Davies-Bouldin et Calinski-Harabasz) : {best_k_davies_bouldin}")
             else:
+                k_to_return = None
                 print(f"Meilleur k (Silhouette) : {best_k_silhouette}")
                 print(f"Meilleur k (Davies-Bouldin) : {best_k_davies_bouldin}")
                 print(f"Meilleur k (Calinski-Harabasz) : {best_k_calinski_harabasz}")
@@ -318,19 +226,15 @@ def find_best_k(datapoints, k_values=list(range(2, 11)), metrics=["silhouette", 
         plt.legend()
         plt.show()
     
-    
-datanp, true_label = load_dataset("2d-4c.arff")
-display_dataset(datanp)
-predicted_label, nb_cluster_estimated, n_noise_, runtime = DBSCAN(
-    datanp, 15, 5)
-display_dataset_w_label(datanp, predicted_label)
+    return k_to_return
+ 
+def load_dataset_from_txt(ds_name):
+    # Charger les données depuis le fichier txt
+    global path
+    df = pd.read_csv(path + str(ds_name), sep='\s+', header=None, names=['x', 'y'])    # Convertir les données en numpy arrays
+    datanp = df[['x', 'y']].to_numpy()
 
-predicted_label, nb_cluster_estimated, n_noise_, runtime = DBSCAN(
-    datanp, 25, 15)
-display_dataset_w_label(datanp, predicted_label)
-
-find_best_k(datanp)
-# %% TESTs
+    return datanp
 
 def list_files_with_specific_extension(folder_path, specific_extension):
     files_with_extension = []
@@ -351,10 +255,308 @@ def group_files_by_name(folder_path):
     
     return list(file_groups.values())
 
-# Utilisation de la fonction
-dossier = os.path.dirname(__file__).replace("\\", "/") + "/artificial/"  # Remplacez ceci par le chemin de votre dossier
-all_files = group_files_by_name(dossier)
+# %% KMEANS CLUSTERING
+path = os.path.dirname(__file__).replace("\\", "/") + "/dataset_p1/"
+define_path(path)
 
-for shape in all_files:
-    for path_to_data in shape:
-        print(path+path_to_data)
+
+define_path(path)
+
+plt.figure(figsize=(12, 12))  # Set the overall figure size to 12x12
+
+
+datanp, true_label = load_dataset("xclara.arff")
+
+# Kmeans clustering for the first dataset
+plt.subplot(2, 2, 1)
+display_dataset(datanp, "xclara.arff")
+
+
+# Plotting for the first dataset
+plt.subplot(2, 2, 2)
+predicted_label, iteration, runtime = Kmeans(datanp, 3)
+
+get_silhouette_scr(datanp, predicted_label)
+get_davies_bouldin_scr(datanp, predicted_label)
+get_calinski_harabasz_scr(datanp, predicted_label)
+display_dataset_w_label(datanp, predicted_label, f"Kmeans with K = {3}")
+
+# Load and display the second dataset (banana.arff)
+datanp, true_label = load_dataset("banana.arff")
+
+
+# Kmeans clustering for the second dataset
+predicted_label, iteration, runtime = Kmeans(datanp, 2)
+
+# Plotting for the second dataset
+plt.subplot(2, 2, 3)
+display_dataset(datanp, "banana.arff")
+plt.subplot(2, 2, 4)
+
+get_silhouette_scr(datanp, predicted_label)
+get_davies_bouldin_scr(datanp, predicted_label)
+get_calinski_harabasz_scr(datanp, predicted_label)
+display_dataset_w_label(datanp, predicted_label, f"Kmeans with K = {2}")
+
+# Show the plots
+plt.tight_layout()
+plt.show()
+    
+# %% Kmeans depend des conditions initiales + forme circulaire
+name = "zelnik5.arff"
+datanp, true_label = load_dataset(name)
+
+# Define the number of rows and columns for the subplot grid
+rows = 3
+columns = 3
+
+# Create a figure with a specified size
+plt.figure(figsize=(15, 15))
+
+# Initial subplot with the original dataset
+plt.subplot(rows, columns, 1)
+display_dataset(datanp, name)
+plt.title("Original Dataset")
+
+for i in range(1, rows * columns):
+    plt.subplot(rows, columns, i + 1)
+    
+    # Perform K-means clustering for each iteration
+    predicted_label, iteration, runtime = Kmeans(datanp, 4)
+    
+    # Display clustering results and metrics
+    get_silhouette_scr(datanp, predicted_label)
+    get_davies_bouldin_scr(datanp, predicted_label)
+    get_calinski_harabasz_scr(datanp, predicted_label)
+    
+    display_dataset_w_label(datanp, predicted_label, f"Kmeans with K = {4}, iteration {i}")
+    plt.title(f"Iteration {i}\nClusters: {4}, Runtime: {round(runtime * 1000, 2)} ms")
+    
+    print(f"Iteration {i}: nb clusters = 4, nb iter = {iteration}, runtime = {round(runtime * 1000, 2)} ms")
+
+# Adjust layout to prevent overlapping
+plt.tight_layout()
+
+# Show the final plot
+plt.show()
+
+
+# %% AGGLOMERATIF CLUSTERING : exemple des méthodes
+
+datanp, true_label = load_dataset("2d-4c.arff")
+
+plt.figure(figsize=(10, 8))
+
+plt.subplot(2, 2, 1)
+display_dataset(datanp, "2d-4c.arff")
+
+plt.subplot(2, 2, 2)
+predicted_label, nb_cluster_estimated, n_noise_, runtime = clustering_agglomeratif_w_th(
+    datanp, 'single', 0.5)
+display_dataset_w_label(datanp, predicted_label, "clustering agglomeratif with threshold = 0.5")
+
+plt.subplot(2, 2, 3)
+predicted_label, nb_cluster_estimated, n_noise_, runtime = clustering_agglomeratif_w_th(
+    datanp, 'single', 5)
+display_dataset_w_label(datanp, predicted_label, "clustering agglomeratif with threshold = 5")
+
+plt.subplot(2, 2, 4)
+predicted_label, nb_cluster_estimated, n_noise_, runtime = clustering_agglomeratif_w_nb_cluster(
+    datanp, 'single', 4)
+display_dataset_w_label(datanp, predicted_label, "clustering agglomeratif with 4 clusters")
+
+plt.tight_layout()
+plt.show()
+
+# %% AGGLOMERATIF CLUSTERING - limite du threshold 
+path = os.path.dirname(__file__).replace("\\", "/") + "/dataset_p1/"
+define_path(path)
+name = "sizes4.arff"
+datanp, true_label = load_dataset(name)
+
+plt.figure(figsize=(12, 6))
+
+plt.subplot(1, 2, 1)
+display_dataset(datanp, name)
+seuil = 0.6
+predicted_label, nb_cluster_estimated, n_noise_, runtime = clustering_agglomeratif_w_th(
+    datanp, 'single', seuil)
+display_dataset_w_label(datanp, predicted_label, f"clustering agglomeratif with seuil à {seuil}")
+
+plt.subplot(1, 2, 2)
+seuil = 2
+predicted_label, nb_cluster_estimated, n_noise_, runtime = clustering_agglomeratif_w_th(
+    datanp, 'single', seuil)
+display_dataset_w_label(datanp, predicted_label, f"clustering agglomeratif with seuil à {seuil}")
+
+plt.tight_layout()
+plt.show()
+
+
+# %% AGGLOMERATIF CLUSTERING - outliers
+plt.figure(figsize=(12, 6))
+
+
+path = os.path.dirname(__file__).replace("\\", "/") + "/dataset_p1/"
+define_path(path)
+name = "sizes4.arff"
+datanp, true_label = load_dataset(name)
+plt.subplot(2, 2, 1)
+
+display_dataset(datanp, name)
+plt.subplot(2, 2, 2)
+
+display_dendogramme(datanp, name)
+predicted_label, nb_cluster_estimated, n_noise_, runtime = clustering_agglomeratif_w_nb_cluster(
+    datanp, 'single', 4)
+plt.subplot(2, 2, 3)
+
+display_dataset_w_label(datanp, predicted_label, "clustering agglomeratif with 4 clusters")
+plt.show()
+
+# %% AGGLOMERATIF CLUSTERING - marche sur les formes convexes
+plt.figure(figsize=(12, 6))
+plt.subplot(1, 2, 1)
+
+path = os.path.dirname(__file__).replace("\\", "/") + "/dataset_p1/"
+define_path(path)
+name = "banana.arff"
+nb_cluster = 2
+datanp, true_label = load_dataset(name)
+display_dataset(datanp, name)
+#display_dendogramme(datanp, name)
+predicted_label, nb_cluster_estimated, n_noise_, runtime = clustering_agglomeratif_w_nb_cluster(
+    datanp, 'single', nb_cluster)
+
+plt.subplot(1, 2, 2)
+
+display_dataset_w_label(datanp, predicted_label, f"clustering agglomeratif with {nb_cluster} clusters")
+plt.show()
+
+# %% METRIQUES
+
+
+plt.figure(figsize=(12, 6))
+
+
+datanp, true_label = load_dataset("2d-4c.arff")
+plt.subplot(1, 2, 1)
+
+display_dataset(datanp,"2d-4c.arff")
+plt.subplot(1, 2, 2)
+
+find_best_k(datanp)
+
+plt.tight_layout()
+plt.show()
+
+# %% Partie 2
+
+
+
+current_file  = os.path.dirname(__file__).replace("\\", "/") + "/dataset_p2/"
+
+all_files = list_files_with_specific_extension(current_file,"txt")
+
+
+define_path(current_file)
+
+# %% essai des métriques et compa des méthodes
+
+data1 = all_files[1]
+dataset = load_dataset_from_txt(data1)
+
+plt.figure(figsize=(12, 12))
+
+plt.subplot(2, 2, 1)
+display_dataset(dataset, f"{data1}")
+
+plt.subplot(2, 2, 2)
+best_k = find_best_k(dataset, k_values=list(range(2, 20)))
+predicted_label, nb_cluster_estimated, n_noise_, runtime = clustering_agglomeratif_w_nb_cluster(
+    dataset, 'single', best_k)
+plt.subplot(2, 2, 3)
+
+display_dataset_w_label(dataset, predicted_label, f"clustering agglomératif with K = {best_k}")
+
+plt.subplot(2, 2, 4)
+predicted_label, iteration, runtime = Kmeans(dataset, best_k)
+display_dataset_w_label(dataset, predicted_label, f"Kmeans with K = {best_k}")
+
+plt.tight_layout()
+plt.show()
+
+# %% clustering agglomératif via le threshold est sensible aux variances des clusters
+
+data1 = all_files[5]
+dataset = load_dataset_from_txt(data1)
+
+plt.figure(figsize=(12, 12))
+
+plt.subplot(2, 2, 1)
+display_dataset(dataset, f"{data1}")
+
+plt.subplot(2, 2, 2)
+th = 15
+predicted_label, nb_cluster_estimated, n_noise_, runtime = clustering_agglomeratif_w_th(
+    dataset, 'single', th)
+display_dataset_w_label(dataset, predicted_label, f"clustering agglomeratif with threshold={th}")
+
+plt.subplot(2, 2, 3)
+th = 400
+predicted_label, nb_cluster_estimated, n_noise_, runtime = clustering_agglomeratif_w_th(
+    dataset, 'single', th)
+display_dataset_w_label(dataset, predicted_label, f"clustering agglomeratif with threshold={th}")
+
+plt.subplot(2, 2, 4)
+th = 2500
+predicted_label, nb_cluster_estimated, n_noise_, runtime = clustering_agglomeratif_w_th(
+    dataset, 'single', th)
+display_dataset_w_label(dataset, predicted_label, f"clustering agglomeratif with threshold={th}")
+
+plt.tight_layout()
+plt.show()
+
+
+
+plt.figure()
+plt.subplot(2, 1, 1)
+find_best_k(dataset)
+
+# Second subplot
+plt.subplot(2, 1, 2)
+predicted_label, iteration, runtime = Kmeans(dataset, 8)
+display_dataset_w_label(dataset, predicted_label, f"Kmeans with K = {8}")
+
+# Adjust layout
+plt.tight_layout()
+
+# Show the plots
+plt.show()
+
+
+# %% runtime 
+plt.figure(figsize=(12, 6))
+
+
+current_file  = os.path.dirname(__file__).replace("\\", "/") + "/dataset_p2/"
+
+all_files = list_files_with_specific_extension(current_file,"txt")
+define_path(current_file)
+plt.subplot(2, 2, 1)
+
+dataset = load_dataset_from_txt("y1.txt")
+display_dataset(dataset, "y1.txt")
+predicted_label, iteration, runtime = Kmeans(dataset, 1)
+plt.subplot(2, 2, 2)
+
+display_dataset_w_label(dataset, predicted_label, f"Kmeans with K = {1}, runtime = {round(runtime * 1000, 2)} sec")
+
+predicted_label, iteration, leaves, runtime = clustering_agglomeratif_w_nb_cluster(
+    dataset, 'single', 1)
+
+plt.subplot(2, 2, 3)
+
+display_dataset_w_label(dataset, predicted_label, f"clustering agglomeratif with K = {1}, runtime = {round(runtime * 1000, 2)} sec")
+plt.tight_layout()
+plt.show()
